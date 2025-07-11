@@ -6,18 +6,19 @@ on:
   workflow_dispatch:
 
 jobs:
-  fetch-content:
-    name: 📥 Fetch Latest Content
+  sync-copilot-content:
+    name: 🤖 Sync Copilot Content
     runs-on: ubuntu-latest
-    outputs:
-      has-changes: ${{ steps.verify-changed-files.outputs.changed }}
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
-      - name: Checkout dev-template
+      - name: 📥 Checkout Repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Fetch latest from github/awesome-copilot
+      - name: 🔄 Fetch Latest from awesome-copilot
         run: |
           git clone --depth 1 https://github.com/github/awesome-copilot tmp-copilot
           
@@ -34,44 +35,19 @@ jobs:
           # Clean up
           rm -rf tmp-copilot
 
-      - name: Check for changes
+      - name: 🔍 Check for Changes
         id: verify-changed-files
         run: |
           if [ -n "$(git status --porcelain)" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
+            echo "✅ Changes detected - will create PR"
           else
             echo "changed=false" >> $GITHUB_OUTPUT
+            echo "ℹ️  No changes detected - skipping PR creation"
           fi
 
-      - name: Upload changes
+      - name: 🚀 Create Pull Request
         if: steps.verify-changed-files.outputs.changed == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: synced-content
-          path: .github/
-          retention-days: 1
-
-  create-pull-request:
-    name: 🚀 Create Pull Request
-    runs-on: ubuntu-latest
-    needs: fetch-content
-    if: needs.fetch-content.outputs.has-changes == 'true'
-    permissions:
-      contents: write
-      pull-requests: write
-    steps:
-      - name: Checkout dev-template
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Download changes
-        uses: actions/download-artifact@v4
-        with:
-          name: synced-content
-          path: .github/
-
-      - name: Create Pull Request
         uses: peter-evans/create-pull-request@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
