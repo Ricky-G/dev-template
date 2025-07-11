@@ -1,0 +1,78 @@
+name: Sync Copilot Instructions
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # Every Monday
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout dev-template
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch latest from github/awesome-copilot
+        run: |
+          git clone --depth 1 https://github.com/github/awesome-copilot tmp-copilot
+          
+          # Create directories if they don't exist
+          mkdir -p .github/prompts
+          mkdir -p .github/chatmodes
+          mkdir -p .github/instructions
+          
+          # Copy all prompts, chatmodes, and instructions
+          cp -r tmp-copilot/prompts/* .github/prompts/ 2>/dev/null || echo "No prompts to copy"
+          cp -r tmp-copilot/chatmodes/* .github/chatmodes/ 2>/dev/null || echo "No chatmodes to copy"
+          cp -r tmp-copilot/instructions/* .github/instructions/ 2>/dev/null || echo "No instructions to copy"
+          
+          # Clean up
+          rm -rf tmp-copilot
+
+      - name: Check for changes
+        id: verify-changed-files
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.verify-changed-files.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Auto-sync copilot prompts, chatmodes, and instructions from awesome-copilot"
+          title: "🤖 Auto-sync Copilot Instructions"
+          body: |
+            ## 🤖 Automated Copilot Instructions Sync
+            
+            This PR automatically syncs the latest prompts, chatmodes, and instructions from the [awesome-copilot](https://github.com/github/awesome-copilot) repository.
+            
+            ### 📋 Changes Include:
+            - 🎯 **Prompts**: Updated reusable prompt templates
+            - 🧩 **Chat Modes**: New custom chat modes
+            - 📚 **Instructions**: Technology-specific instruction sets
+            
+            ### 🔍 Review Checklist:
+            - [ ] Review new prompts for relevance
+            - [ ] Check chat modes for conflicts
+            - [ ] Validate instruction quality
+            - [ ] Ensure no sensitive data included
+            
+            **Source**: [github/awesome-copilot](https://github.com/github/awesome-copilot)
+            **Triggered**: ${{ github.event_name == 'schedule' && 'Scheduled weekly sync' || 'Manual trigger' }}
+          branch: sync-copilot-instructions
+          delete-branch: true
+          base: main
+          labels: |
+            automated
+            copilot
+            sync
+          draft: false

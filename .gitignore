@@ -1,4 +1,5 @@
-## templates=dotnetcore,python,node,react,reactnative,csharp,visualstudio,visualstudiocode
+# This .gitignore file is configured to support projects using the following technologies:
+# dotnetcore, python, node, react, reactnative, csharp, visualstudio, visualstudiocode
 
 ### Csharp ###
 ## Ignore Visual Studio temporary files, build results, and
